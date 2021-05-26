@@ -5,10 +5,11 @@
 # #############################################################################
 
 import _pickle as pickle
-import CMIPobject as co
 
 def generateList(outfile):
     print(outfile)
+    print('new lines')
+    print('-= DONE =-')
     
-    Models = co.getModels(cmip='6')
-    print(Models)
+    #Models = co.getModels(cmip='6')
+    #print(Models)
