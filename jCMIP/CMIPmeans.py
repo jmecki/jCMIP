@@ -4,56 +4,61 @@
 #
 # #############################################################################
 
-def meanSC(Model,EXP,ENS,var,styr,fnyr,dtype='gn'):
-    modeldir = (Model.savedir + EXP + '/')
+import os
+import numpy as np
+from netCDF4 import Dataset
+import cftime
 
-    outfile = (modeldir + var + '_' + Model.name + '_'
-               + EXP + '_' + ENS + '_' + dtype + '_'
-               + str(styr) + '01-' + str(fnyr) + '12_SC.nc')
-    print(outfile)
-'''
-if os.path.isfile(outfile):
-    print('file already exists - no need to compute')
-else:
+from . import CMIPobject
+from . import CMIPread
+
+def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
+    modeldir = os.path.dirname(outfile)
+    
     # Make directory if it doesn't exist:
     if not os.path.exists(modeldir):
         os.makedirs(modeldir)
     
-    # Extract all files needed for the computations:
-
-    Files = Model.getFilesOmon(EXP,ENS,var)
+    # Find all files needed for the computations:
+    Files = Model.getFiles(var,EXP=EXP,ENS=ENS,vtype=vtype,gtype=gtype)
     nf = len(Files)
     
-    ncid = Dataset((Model.savedir + 'mesh_mask.nc'),'r')
-    dims = ncid.variables['tmask'].get_dims()
-    ncid.close
-    
-    nx = dims[3].size
-    ny = dims[2].size
-    nz = dims[1].size
-    nyr = fnyr-styr+1
-
+    # Get model information:
+    dims  = CMIPobject.getDims(Files[0],var)
+    nd    = len(dims)   
+    nyr   = fnyr - styr + 1
+    dtime = dims[0].name
+    dlon  = dims[nd-1].name
+    nx    = dims[nd-1].size
+    dlat  = dims[nd-2].name
+    ny    = dims[nd-2].size
+    if nd == 4:
+        dlev = dims[1].name
+        nz   = dims[1].size
+    if Model.OextraUV:  # Add more as required:
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
+            ny = ny + 1
+                    
     # Get latitude and longitude:
-    vlon = Model.vlon
-    vlat = Model.vlat
-    
-    print(Files[0])
-    
-    if Model.reg:
-        lon = read.read1Dflat(Model.name,Files[0],vlon)
-        lat = read.read1Dflat(Model.name,Files[0],vlat)
+    extra = False
+    if vtype == 'Omon':
+        nlon = Model.Olon
+        nlat = Model.Olat
+        reg  = Model.Oreg
+        lon,lat = CMIPread.Olatlon(Model,Files[0],var)
+    elif vtype == 'Amon':
+        nlon = Model.Alon
+        nlat = Model.Alat
+        reg  = Model.Areg
+        lon,lat = CMIPread.Alatlon(Model,Files[0],var)
     else:
-        lon = read.read2Dflat(Model.name,Files[0],vlon)
-        lat = read.read2Dflat(Model.name,Files[0],vlat)
+        print((vtype + ' is an invalid/uncoded type'))
         
-    if ((Model.name[0:7] == 'HadGEM2') & ((var == 'uo') | (var == 'vo'))):
-        lat = np.concatenate((lat,[-90,]),0)
-        
-    lev = read.read1Dflat(Model.name,Files[0],dims[1].name)
-
     # Loop through all files and add together the relavent years:
-
-    data = np.zeros((12,nz,ny,nx),'float')
+    if nd == 3:
+        data = np.zeros((12,ny,nx),'float')
+    elif nd == 4:
+        data = np.zeros((12,nz,ny,nx),'float')  
     days = np.zeros((12),'float')
     bnds = np.zeros((12,2),'float')
     nn = 0
@@ -62,11 +67,11 @@ else:
     for ff in range(0,nf):
         # Get time information from file:
         ncid = Dataset(Files[ff],'r')
-        time  = ncid.variables[dims[0].name][:]
-        bounds = ncid.variables[dims[0].name].bounds
+        time   = ncid.variables[dtime][:]
+        bounds = ncid.variables[dtime].bounds
         time_bnds = ncid.variables[bounds][:,:]
-        cal   = ncid.variables[dims[0].name].calendar
-        units = ncid.variables[dims[0].name].units
+        cal   = ncid.variables[dtime].calendar
+        units = ncid.variables[dtime].units
         ncid.close()
         if Model.name == 'FGOALS-g2':
             units = (units + '-01')  
@@ -79,59 +84,68 @@ else:
             
             if ((yr >= styr) & (yr <= fnyr)):
                 nn = nn + 1
-                ncid = Dataset(Files[ff],'r')
-                tmp = read.read3D(Model.name,Files[ff],var,tt)
-                ncid.close()
-                data[mm-1,:,:,:] = data[mm-1,:,:,:] + tmp
-                days[mm-1] = days[mm-1] + time[tt]
-                bnds[mm-1,:] = bnds[mm-1,:] + time_bnds[tt,:]
+                if vtype == 'Omon':
+                    if nd == 3:
+                        tmp = CMIPread.Oread2Ddata(Model,Files[ff],var,time=tt)
+                    elif nd == 4:
+                        tmp = CMIPread.Oread3Ddata(Model,Files[ff],var,time=tt) 
+                elif vtype == 'Amon':
+                    if nd == 3:
+                        tmp = CMIPread.Aread2Ddata(Model,Files[ff],var,time=tt)
+                    elif nd == 4:
+                        print('Need to code 3D atmosphere reading in of data') 
+                else:
+                    print((vtype + ' is not coded yet!'))
+                data[mm-1,:,:] = data[mm-1,:,:] + tmp
+                days[mm-1]     = days[mm-1] + time[tt]
+                bnds[mm-1,:]   = bnds[mm-1,:] + time_bnds[tt,:]
 
     data = data/nyr
     days = days/nyr
     bnds = bnds/nyr
-
+    
     # Save data to file:
     ncid = Dataset(outfile, 'w', format='NETCDF4')
     # coordinates:
-    ncid.createDimension(dims[3].name,nx)
-    ncid.createDimension(dims[2].name,ny)
-    ncid.createDimension(dims[1].name,nz)
-    ncid.createDimension(dims[0].name,None)
+    ncid.createDimension(dlon,nx)
+    ncid.createDimension(dlat,ny)
+    if nd == 4:
+        ncid.createDimension(dlev,nz)
+    ncid.createDimension(dtime,None)
     ncid.createDimension('bnds',2)
     # variables:
-    if Model.reg:
-        ncid.createVariable(vlon,'f8',(dims[3].name,))
-        ncid.createVariable(vlat,'f8',(dims[2].name,))
+    if reg:
+        ncid.createVariable(nlon,'f8',(dlon,))
+        ncid.createVariable(nlat,'f8',(dlat,))
     else:
-        ncid.createVariable(vlon,'f8',(dims[2].name,dims[3].name,))
-        ncid.createVariable(vlat,'f8',(dims[2].name,dims[3].name,))
-    ncid.createVariable(dims[1].name,'f8',(dims[1].name,))
-    ncid.createVariable(dims[0].name,'f8',(dims[0].name,))
-    ncid.createVariable(bounds,'f8',(dims[0].name,'bnds',))
-    ncid.createVariable(var,'f8',(dims[0].name,dims[1].name,dims[2].name,dims[3].name,))
+        ncid.createVariable(nlon,'f8',(dlat,dlon,))
+        ncid.createVariable(nlat,'f8',(dlat,dlon,))
+    ncid.createVariable(dtime,'f8',(dtime,))
+    ncid.createVariable(bounds,'f8',(dtime,'bnds',))
+    if nd == 4:
+        ncid.createVariable(dlat,'f8',(dlev,))
+        ncid.createVariable(var,'f8',(dtime,dlev,dlat,dlon,))
+    else:
+        ncid.createVariable(var,'f8',(dtime,dlat,dlon,))
     
     
-    ncid.variables[dims[0].name].calendar = cal
-    ncid.variables[dims[0].name].units    = units
-    ncid.variables[dims[0].name].bounds   = bounds
+    ncid.variables[dtime].calendar = cal
+    ncid.variables[dtime].units    = units
+    ncid.variables[dtime].bounds   = bounds
 
     # fill variables:
-    if Model.reg:
-        ncid.variables[vlon][:] = lon
-        ncid.variables[vlat][:] = lat
+    if reg:
+        ncid.variables[nlon][:] = lon
+        ncid.variables[nlat][:] = lat
     else:
-        ncid.variables[vlon][:,:] = lon
-        ncid.variables[vlat][:,:] = lat
-    ncid.variables[dims[1].name][:] = lev
-    ncid.variables[dims[0].name][0:12] = days
-    ncid.variables[bounds][:,:] = bnds
-    ncid.variables[var][0:12,:,:,:] = data
+        ncid.variables[nlon][:,:] = lon
+        ncid.variables[nlat][:,:] = lat
+    ncid.variables[dtime][0:12]   = days
+    ncid.variables[bounds][:,:]   = bnds
+    if nd == 3:
+        ncid.variables[var][0:12,:,:] = data
+    elif nd == 4:
+        ncid.variables[var][0:12,:,:,:] = data
 
     # close:
     ncid.close()
-
-# Delete submit file after successful computation:
-lfile = ('mean_' + var + '_' + Model.name + '_' +  EXP + '_' + ENS + '_SC.slurm')
-os.remove(lfile)
-
-'''

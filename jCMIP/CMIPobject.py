@@ -10,10 +10,10 @@ datadir6 = '/badc/cmip6/data/CMIP6/'
 
 class CMIPmodel:
     def __init__(self,name,cmip=None,datadir=None,savedir=None,\
-                 Ogrid=None,Omeshmask=None,Oreg=True,Olon='unknown',Olat='unknown',OflipNS=False,OextraUV=False,\
-                 Agrid=None,Ameshmask=None,Areg=True,Alon='unknown',Alat='unknown',AflipNS=False,AextraUV=False,\
-                 Igrid=None,Imeshmask=None,Ireg=True,Ilon='unknown',Ilat='unknown',IflipNS=False,IextraUV=False,\
-                 Lgrid=None,Lmeshmask=None,Lreg=True,Llon='unknown',Llat='unknown',LflipNS=False,LextraUV=False):
+                 Ogrid=None,Omeshmask=None,Oreg=True,Olon='unknown',Olat='unknown',OflipNS=False,OextraT=False,OextraWE=[0,0],\
+                 Agrid=None,Ameshmask=None,Areg=True,Alon='unknown',Alat='unknown',AflipNS=False,AextraT=False,AextraWE=[0,0],\
+                 Igrid=None,Imeshmask=None,Ireg=True,Ilon='unknown',Ilat='unknown',IflipNS=False,IextraT=False,IextraWE=[0,0],\
+                 Lgrid=None,Lmeshmask=None,Lreg=True,Llon='unknown',Llat='unknown',LflipNS=False,LextraT=False,LextraWE=[0,0]):
         self.name = name
         self.cmip = cmip if cmip is not None else 'unknown'
         if datadir is None:
@@ -32,7 +32,8 @@ class CMIPmodel:
         self.Olon      = Olon
         self.Olat      = Olat
         self.OflipNS   = OflipNS
-        self.OextraUV  = OextraUV
+        self.OextraT   = OextraT
+        self.OextraWE  = OextraWE
         
         # Atmosphere information: 
         self.Agrid     = Agrid     if Agrid     is not None else 'unknown'
@@ -41,16 +42,18 @@ class CMIPmodel:
         self.Alon      = Alon
         self.Alat      = Alat
         self.AflipNS   = AflipNS
-        self.AextraUV  = AextraUV
+        self.AextraT   = AextraT
+        self.AextraWE  = AextraWE
         
-        # Ice information:
+        # Sea Ice information:
         self.Igrid     = Igrid     if Igrid     is not None else 'unknown'
         self.Imeshmask = Imeshmask if Imeshmask is not None else 'unknown'
         self.Ireg      = Ireg
         self.Ilon      = Ilon
         self.Ilat      = Ilat
         self.IflipNS   = IflipNS
-        self.IextraUV  = IextraUV
+        self.IextraT   = IextraT
+        self.IextraWE  = IextraWE
         
         # Land information:
         self.Lgrid     = Lgrid     if Lgrid     is not None else 'unknown'
@@ -59,7 +62,8 @@ class CMIPmodel:
         self.Llon      = Llon
         self.Llat      = Llat
         self.LflipNS   = LflipNS
-        self.LextraUV  = LextraUV
+        self.LextraT   = LextraT
+        self.LextraWE  = LextraWE
         
         
     # Return institute of model (some models have multiple institutes):
