@@ -45,7 +45,7 @@ def Olatlon(Model,infile,var):
             
         
     # Extra row in u and v fields (coded only for regular grid):
-    if Model.OextraUV:
+    if Model.OextraT:
         if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
             if Model.Oreg:
                 lat = np.concatenate((lat,[-90,]),0)
@@ -72,7 +72,7 @@ def Alatlon(Model,infile,var):
             lon  = np.flip(lon,axis=0)
         
     # Extra row in u and v fields (coded only for regular grid):
-    if Model.AextraUV:
+    if Model.AextraT:
         print('Need to code for AextraUV')
         
     return lon,lat
@@ -109,7 +109,7 @@ def Oread2Ddata(Model,infile,var,time=None,lev=None,mask=False):
         data = np.flip(data,axis=0)
         
     # Extra row in u and v fields:
-    if Model.OextraUV:
+    if Model.OextraT:
         if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
             data = np.concatenate((data,np.expand_dims(data[-1,:],0)),0)
         
@@ -135,7 +135,7 @@ def Oread3Ddata(Model,infile,var,time=None,mask=False):
         data = np.flip(data,axis=1)
         
     # Extra row in u and v fields:
-    if Model.OextraUV:
+    if Model.OextraT:
         if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
             data = np.concatenate((data,np.expand_dims(data[:,-1,:],1)),1)
         
