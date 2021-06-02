@@ -6,22 +6,51 @@ import numpy as np
 # Reads in lat and lon data from ocean:
 def Olatlon(Model,infile,var):
     ncid = Dataset(infile,'r')
-    if Model.Oreg:
-        lon = ncid.variables[Model.Olon][:]
-        lat = ncid.variables[Model.Olat][:]
+    if (Model.name == 'MPI-ESM1-2-XR'):
+        if (var == 'uo'):
+            if Model.Oreg:
+                lon = ncid.variables['lon_2'][:]
+                lat = ncid.variables['lat_2'][:]
+            else:
+                lon = ncid.variables['lon_2'][:,:]
+                lat = ncid.variables['lat_2'][:,:]
+        elif  (var == 'vo'):
+            if Model.Oreg:
+                lon = ncid.variables['lon_3'][:]
+                lat = ncid.variables['lat_3'][:]
+            else:
+                lon = ncid.variables['lon_3'][:,:]
+                lat = ncid.variables['lat_3'][:,:]
+        else:
+            if Model.Oreg:
+                lon = ncid.variables[Model.Olon][:]
+                lat = ncid.variables[Model.Olat][:]
+            else:
+                lon = ncid.variables[Model.Olon][:,:]
+                lat = ncid.variables[Model.Olat][:,:]           
     else:
-        lon = ncid.variables[Model.Olon][:,:]
-        lat = ncid.variables[Model.Olat][:,:]
+        if Model.Oreg:
+            lon = ncid.variables[Model.Olon][:]
+            lat = ncid.variables[Model.Olat][:]
+        else:
+            lon = ncid.variables[Model.Olon][:,:]
+            lat = ncid.variables[Model.Olat][:,:]
     ncid.close()
     
     # Flip North-South:
     if Model.OflipNS:
         lat  = np.flip(lat,axis=0)
+        if not Model.Oreg:
+            lon  = np.flip(lon,axis=0)
+            
         
     # Extra row in u and v fields (coded only for regular grid):
     if Model.OextraUV:
         if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
-            lat = np.concatenate((lat,[-90,]),0)
+            if Model.Oreg:
+                lat = np.concatenate((lat,[-90,]),0)
+            else:
+                print('need to code')
         
     return lon,lat
 
@@ -39,6 +68,8 @@ def Alatlon(Model,infile,var):
     # Flip North-South:
     if Model.AflipNS:
         lat  = np.flip(lat,axis=0)
+        if not Model.Areg:
+            lon  = np.flip(lon,axis=0)
         
     # Extra row in u and v fields (coded only for regular grid):
     if Model.AextraUV:
@@ -52,14 +83,14 @@ def Oread2Ddata(Model,infile,var,time=None,lev=None,mask=False):
     if mask:
         if time == None:
             if lev == None:
-                data = np.squeeze(ncid.variables[var][:,:]).mask
+                data = 1-np.squeeze(ncid.variables[var][:,:]).mask
             else:
-                data = np.squeeze(ncid.variables[var][lev,:,:]).mask
+                data = 1-np.squeeze(ncid.variables[var][lev,:,:]).mask
         else:
             if lev == None:
-                data = np.squeeze(ncid.variables[var][time,:,:]).mask
+                data = 1-np.squeeze(ncid.variables[var][time,:,:]).mask
             else:
-                data = np.squeeze(ncid.variables[var][time,lev,:,:]).mask
+                data = 1-np.squeeze(ncid.variables[var][time,lev,:,:]).mask
     else:
         if time == None:
             if lev == None:
@@ -79,8 +110,34 @@ def Oread2Ddata(Model,infile,var,time=None,lev=None,mask=False):
         
     # Extra row in u and v fields:
     if Model.OextraUV:
-        if ((var == 'vo') | (var == 'uo')):
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
             data = np.concatenate((data,np.expand_dims(data[-1,:],0)),0)
+        
+    return data
+
+# Reads in data from a 3D ocean field:
+def Oread3Ddata(Model,infile,var,time=None,mask=False):
+    ncid = Dataset(infile,'r')
+    if mask:
+        if time == None:
+            data = 1-np.squeeze(ncid.variables[var][:,:,:]).mask
+        else:
+            data = 1-np.squeeze(ncid.variables[var][time,:,:,:]).mask
+    else:
+        if time == None:
+            data = np.squeeze(ncid.variables[var][:,:,:]).data
+        else:
+            data = np.squeeze(ncid.variables[var][time,:,:,:]).data
+    ncid.close()
+    
+    # Flip North-South:
+    if Model.OflipNS:
+        data = np.flip(data,axis=1)
+        
+    # Extra row in u and v fields:
+    if Model.OextraUV:
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
+            data = np.concatenate((data,np.expand_dims(data[:,-1,:],1)),1)
         
     return data
 
@@ -90,9 +147,9 @@ def Aread2Ddata(Model,infile,var,time=None,lev=None,mask=False):
     if mask:
         if time == None:
             if lev == None:
-                data = np.squeeze(ncid.variables[var][:,:]).mask
+                data = 1-np.squeeze(ncid.variables[var][:,:]).mask
             else:
-                data = np.squeeze(ncid.variables[var][lev,:,:]).mask
+                data = 1-np.squeeze(ncid.variables[var][lev,:,:]).mask
         else:
             if lev == None:
                 data = np.squeeze(ncid.variables[var][time,:,:]).mask
