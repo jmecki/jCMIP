@@ -75,7 +75,7 @@ def updateList(filename,Model,cmip='',datadir='',savedir='',\
         Clist[Model].Olat      = Olat
     if (OflipNS != ''):
         Clist[Model].OflipNS   = OflipNS
-    if (OextraUV != ''):
+    if (OextraT != ''):
         Clist[Model].OextraT   = OextraT
     if (OextraWE != ''):
         Clist[Model].OextraWE  = OextraWE
@@ -93,7 +93,7 @@ def updateList(filename,Model,cmip='',datadir='',savedir='',\
         Clist[Model].Alat      = Alat
     if (AflipNS != ''):
         Clist[Model].AflipNS   = AflipNS
-    if (AextraUV != ''):
+    if (AextraT != ''):
         Clist[Model].AextraT  = AextraT
     if (AextraWE != ''):
         Clist[Model].AextraWE  = AextraWE
@@ -111,7 +111,7 @@ def updateList(filename,Model,cmip='',datadir='',savedir='',\
         Clist[Model].Ilat      = Ilat
     if (IflipNS != ''):
         Clist[Model].IflipNS   = IflipNS
-    if (IextraUV != ''):
+    if (IextraT != ''):
         Clist[Model].IextraT  = IextraT
     if (IextraWE != ''):
         Clist[Model].IextraWE  = IextraWE
@@ -129,7 +129,7 @@ def updateList(filename,Model,cmip='',datadir='',savedir='',\
         Clist[Model].Llat      = Llat
     if (LflipNS != ''):
         Clist[Model].LflipNS   = LflipNS
-    if (LextraUV != ''):
+    if (LextraT != ''):
         Clist[Model].LextraT  = LextraT
     if (LextraWE != ''):
         Clist[Model].LextraWE  = LextraWE
@@ -168,7 +168,7 @@ def updateAllList(filename,cmip='',datadir='',savedir='',\
             Clist[Model].Olat      = Olat
         if (OflipNS != ''):
             Clist[Model].OflipNS   = OflipNS
-        if (OextraUV != ''):
+        if (OextraT != ''):
             Clist[Model].OextraT  = OextraT
         if (OextraWE != ''):
             Clist[Model].OextraWE  = OextraWE
@@ -186,7 +186,7 @@ def updateAllList(filename,cmip='',datadir='',savedir='',\
             Clist[Model].Alat      = Alat
         if (AflipNS != ''):
             Clist[Model].AflipNS   = AflipNS
-        if (AextraUV != ''):
+        if (AextraT != ''):
             Clist[Model].AextraT  = AextraT
         if (AextraWE != ''):
             Clist[Model].AextraWE  = AextraWE
@@ -204,7 +204,7 @@ def updateAllList(filename,cmip='',datadir='',savedir='',\
             Clist[Model].Ilat      = Ilat
         if (IflipNS != ''):
             Clist[Model].IflipNS   = IflipNS
-        if (IextraUV != ''):
+        if (IextraT != ''):
             Clist[Model].IextraT  = IextraT
         if (IextraWE != ''):
             Clist[Model].IextraWE  = IextraWE
@@ -222,7 +222,7 @@ def updateAllList(filename,cmip='',datadir='',savedir='',\
             Clist[Model].Llat      = Llat
         if (LflipNS != ''):
             Clist[Model].LflipNS   = LflipNS
-        if (LextraUV != ''):
+        if (LextraT != ''):
             Clist[Model].LextraT  = LextraT
         if (LextraWE != ''):
             Clist[Model].LextraWE  = LextraWE
