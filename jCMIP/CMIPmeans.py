@@ -12,6 +12,7 @@ import cftime
 from . import CMIPobject
 from . import CMIPread
 
+# Mean of seasonal cycle over several years:
 def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
     modeldir = os.path.dirname(outfile)
     
@@ -149,3 +150,100 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
 
     # close:
     ncid.close()
+    
+# Compute seasonal mean:
+def seasonsal_means(Model,EXP,ENS,var,vtype,mons,outfile,gtype='gn'):
+    # Number of months for mean:
+    nm = len(mons)
+
+    # List all files:
+    files = Model.getFiles(var,EXP=EXP,ENS=ENS,vtype=vtype,gtype=gtype)
+    ns = len(files)
+    files.sort()
+    print(files)
+
+    # Read information from first file:
+    ncid  = Dataset(files[0],'r')
+    cal   = ncid.variables['time'].calendar
+    units = ncid.variables['time'].units
+    ncid.close()
+    # Check if model has a regular grid:
+    if vtype == 'Omon':
+        lon,lat = CMIPread.Olatlon(Model,files[0],var)
+        if Model.Oreg:
+            lon,lat = np.meshgrid(lon,lat)
+    else:
+        print('need to code')
+        sys.exit()
+
+    ni = np.size(lon,axis=1)
+    nj = np.size(lon,axis=0)
+
+    # Specify and initiate output file:
+    modeldir = os.path.dirname(outfile)
+    # Make directory if it doesn't exist:
+    if not os.path.exists(modeldir):
+        os.makedirs(modeldir)
+        
+    if not os.path.isfile(outfile):
+        ncid = Dataset(outfile,'w')
+        # Dimensions:
+        ncid.createDimension('year',None)
+        ncid.createDimension('x',ni)
+        ncid.createDimension('y',nj)
+
+        # Variables:
+        ncid.createVariable('year','f8',('year',))
+        ncid.createVariable('lon', 'f8',('y','x',))
+        ncid.createVariable('lat', 'f8',('y','x',))
+        ncid.createVariable(var, 'f8',('year','y','x',))
+
+        # Data:
+        ncid.variables['lon'][:,:] = lon
+        ncid.variables['lat'][:,:] = lat
+
+        ncid.close()  
+
+    # Loop through each file:
+    yy = 0
+    for ss in range(0,ns):
+        infile = files[ss]
+        print(infile)
+        ncid      = Dataset(infile,'r')
+        time      = ncid.variables['time'][:]
+        time_bnds = ncid.variables[ncid.variables['time'].bounds][:,:]
+        units2    = ncid.variables['time'].units
+        ncid.close()
+
+        # Fix dates if they are different:
+        if units2 != units:
+            print('need to fix dates! - probably not but check!')
+
+        nt = np.size(time,axis=0)
+        # Initialize if first file:
+        if ss == 0:
+            mm   = 0
+            days = 0
+            tmp  = np.zeros((nj,ni),'float')
+
+        for tt in range(0,nt):
+            # Check if one of the months going into the average:
+            if (cftime.num2date(time[tt],units2,cal).month == int(mons[mm])):
+                days = days + time_bnds[tt,1] - time_bnds[tt,0]
+                tmp = tmp + CMIPread.Oread2Ddata(Model,infile,var,tt)*(time_bnds[tt,1] - time_bnds[tt,0])
+                mm = mm + 1
+                # Save if it is last month and if so save:
+                if mm == nm:
+                    year  = cftime.num2date(time[tt],units2,cal).year
+                    print(year)
+                    ncido = Dataset(outfile, 'a', format='NETCDF4')
+                    ncido.variables['year'][yy]  = year
+                    ncido.variables[var][yy,:,:] = tmp/days
+                    ncido.close()
+
+                    mm   = 0
+                    days = 0
+                    tmp  = np.zeros((nj,ni),'float')
+                    yy = yy + 1 # Count years
+
+    print('-= DONE =-')
