@@ -152,7 +152,7 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
     ncid.close()
     
 # Compute seasonal mean:
-def seasonsal_means(Model,EXP,ENS,var,vtype,mons,outfile,gtype='gn'):
+def seasonal_means(Model,EXP,ENS,var,vtype,mons,outfile,gtype='gn'):
     # Number of months for mean:
     nm = len(mons)
 
@@ -172,6 +172,11 @@ def seasonsal_means(Model,EXP,ENS,var,vtype,mons,outfile,gtype='gn'):
         lon,lat = CMIPread.Olatlon(Model,files[0],var)
         if Model.Oreg:
             lon,lat = np.meshgrid(lon,lat)
+    elif vtype == 'Amon':
+        lon,lat = CMIPread.Alatlon(Model,files[0],var)
+        if Model.Areg:
+            lon,lat = np.meshgrid(lon,lat)
+        
     else:
         print('need to code')
         sys.exit()
@@ -230,7 +235,12 @@ def seasonsal_means(Model,EXP,ENS,var,vtype,mons,outfile,gtype='gn'):
             # Check if one of the months going into the average:
             if (cftime.num2date(time[tt],units2,cal).month == int(mons[mm])):
                 days = days + time_bnds[tt,1] - time_bnds[tt,0]
-                tmp = tmp + CMIPread.Oread2Ddata(Model,infile,var,tt)*(time_bnds[tt,1] - time_bnds[tt,0])
+                if vtype == 'Omon':
+                    tmp = tmp + CMIPread.Oread2Ddata(Model,infile,var,tt)*(time_bnds[tt,1] - time_bnds[tt,0])
+                elif vtype == 'Amon':
+                    tmp = tmp + CMIPread.Aread2Ddata(Model,infile,var,tt)*(time_bnds[tt,1] - time_bnds[tt,0])
+                else:
+                    print('need to code')
                 mm = mm + 1
                 # Save if it is last month and if so save:
                 if mm == nm:

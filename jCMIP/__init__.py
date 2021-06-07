@@ -15,4 +15,4 @@ from .CMIPread     import Oread3Ddata
 from .CMIPread     import Aread2Ddata
 
 from .CMIPmeans    import meanSC
-from .CMIPmeans    import seasonsal_means
+from .CMIPmeans    import seasonal_means
