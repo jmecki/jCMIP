@@ -207,7 +207,13 @@ def seasonal_means(Model,EXP,ENS,var,vtype,mons,outfile,gtype='gn'):
         ncid.variables['lon'][:,:] = lon
         ncid.variables['lat'][:,:] = lat
 
-        ncid.close()  
+        ncid.close()
+        nyr = 0
+    else:
+        # Find out how much has been computed:
+        ncid = Dataset(outfile,'r')
+        nyr  = np.size(ncid.variables['year'][:],axis=0)
+        ncid.close()
 
     # Loop through each file:
     yy = 0
@@ -234,22 +240,24 @@ def seasonal_means(Model,EXP,ENS,var,vtype,mons,outfile,gtype='gn'):
         for tt in range(0,nt):
             # Check if one of the months going into the average:
             if (cftime.num2date(time[tt],units2,cal).month == int(mons[mm])):
-                days = days + time_bnds[tt,1] - time_bnds[tt,0]
-                if vtype == 'Omon':
-                    tmp = tmp + CMIPread.Oread2Ddata(Model,infile,var,tt)*(time_bnds[tt,1] - time_bnds[tt,0])
-                elif vtype == 'Amon':
-                    tmp = tmp + CMIPread.Aread2Ddata(Model,infile,var,tt)*(time_bnds[tt,1] - time_bnds[tt,0])
-                else:
-                    print('need to code')
+                if yy >= nyr:
+                    days = days + time_bnds[tt,1] - time_bnds[tt,0]
+                    if vtype == 'Omon':
+                        tmp = tmp + CMIPread.Oread2Ddata(Model,infile,var,tt)*(time_bnds[tt,1] - time_bnds[tt,0])
+                    elif vtype == 'Amon':
+                        tmp = tmp + CMIPread.Aread2Ddata(Model,infile,var,tt)*(time_bnds[tt,1] - time_bnds[tt,0])
+                    else:
+                        print('need to code')
                 mm = mm + 1
                 # Save if it is last month and if so save:
                 if mm == nm:
                     year  = cftime.num2date(time[tt],units2,cal).year
                     print(year)
-                    ncido = Dataset(outfile, 'a', format='NETCDF4')
-                    ncido.variables['year'][yy]  = year
-                    ncido.variables[var][yy,:,:] = tmp/days
-                    ncido.close()
+                    if yy >= nyr:
+                        ncido = Dataset(outfile, 'a', format='NETCDF4')
+                        ncido.variables['year'][yy]  = year
+                        ncido.variables[var][yy,:,:] = tmp/days
+                        ncido.close()
 
                     mm   = 0
                     days = 0

@@ -50,7 +50,18 @@ def Olatlon(Model,infile,var):
             if Model.Oreg:
                 lat = np.concatenate((lat,[-90,]),0)
             else:
-                print('need to code')
+                lat = np.concatenate((lat,-90*np.ones((1,np.size(lat,axis=1)),'float')),0)
+                lon = np.concatenate((lon,lon[-1:,:]),0)
+                
+                
+    # Remove extra W-E columns:
+    if Model.Oreg:
+        ni  = np.size(lon,axis=0)
+        lon = lon[Model.OextraWE[0]:(ni-Model.OextraWE[1])]
+    else:
+        ni  = np.size(lon,axis=1)
+        lon = lon[:,Model.OextraWE[0]:(ni-Model.OextraWE[1])]
+        lat = lat[:,Model.OextraWE[0]:(ni-Model.OextraWE[1])]
         
     return lon,lat
 
@@ -74,6 +85,15 @@ def Alatlon(Model,infile,var):
     # Extra row in u and v fields (coded only for regular grid):
     if Model.AextraT:
         print('Need to code for AextraUV')
+                
+    # Remove extra W-E columns:
+    if Model.Areg:
+        ni  = np.size(lon,axis=0)
+        lon = lon[Model.AextraWE[0]:(ni-Model.AextraWE[1])]
+    else:
+        ni  = np.size(lon,axis=1)
+        lon = lon[:,Model.AextraWE[0]:(ni-Model.AextraWE[1])]
+        lat = lat[:,Model.AextraWE[0]:(ni-Model.AextraWE[1])]
         
     return lon,lat
 
@@ -112,6 +132,10 @@ def Oread2Ddata(Model,infile,var,time=None,lev=None,mask=False):
     if Model.OextraT:
         if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
             data = np.concatenate((data,np.expand_dims(data[-1,:],0)),0)
+                
+    # Remove extra W-E columns:
+    ni   = np.size(data,axis=1)
+    data = data[:,Model.OextraWE[0]:(ni-Model.OextraWE[1])]
         
     return data
 
@@ -138,6 +162,10 @@ def Oread3Ddata(Model,infile,var,time=None,mask=False):
     if Model.OextraT:
         if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
             data = np.concatenate((data,np.expand_dims(data[:,-1,:],1)),1)
+            
+    # Remove extra W-E columns:
+    ni   = np.size(data,axis=2)
+    data = data[:,:,Model.OextraWE[0]:(ni-Model.OextraWE[1])]
         
     return data
 
@@ -171,5 +199,9 @@ def Aread2Ddata(Model,infile,var,time=None,lev=None,mask=False):
     # Flip North-South:
     if Model.AflipNS:
         data = np.flip(data,axis=0)
+                
+    # Remove extra W-E columns:
+    ni   = np.size(data,axis=1)
+    data = data[:,Model.AextraWE[0]:(ni-Model.AextraWE[1])]
         
     return data
