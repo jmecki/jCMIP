@@ -8,6 +8,7 @@ import os
 import numpy as np
 from netCDF4 import Dataset
 import cftime
+import copy
 
 from . import CMIPobject
 from . import CMIPread
@@ -263,5 +264,187 @@ def seasonal_means(Model,EXP,ENS,var,vtype,mons,outfile,gtype='gn'):
                     days = 0
                     tmp  = np.zeros((nj,ni),'float')
                     yy = yy + 1 # Count years
+
+    print('-= DONE =-')
+    
+# Compute means over a specified lat-lon box (currently only works for data on T-points):
+def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype='gn'):
+    # List all files:
+    Tfiles = Model.getFiles(EXP=EXP,ENS=ENS,var=var,vtype=vtype)
+    nf = len(Tfiles)
+    
+    # Read information from first file:
+    ncid  = Dataset(Tfiles[0],'r')
+    cal   = ncid.variables['time'].calendar
+    units = ncid.variables['time'].units
+    ncid.close()
+    # Check if model has a regular grid:
+    if vtype == 'Omon':
+        lon,lat = CMIPread.Olatlon(Model,Tfiles[0],var)
+        if Model.Oreg:
+            lon,lat = np.meshgrid(lon,lat)
+    elif vtype == 'Amon':
+        lon,lat = CMIPread.Alatlon(Model,Tfiles[0],var)
+        if Model.Areg:
+            lon,lat = np.meshgrid(lon,lat)
+    else:
+        print('need to code')
+        sys.exit()    
+    
+    dims  = CMIPobject.getDims(Tfiles[0],var)
+    nd    = len(dims)   
+    dtime = dims[0].name
+    dlon  = dims[nd-1].name
+    ni    = dims[nd-1].size
+    dlat  = dims[nd-2].name
+    nj    = dims[nd-2].size
+    if nd == 4:
+        dlev = dims[1].name
+        nk   = dims[1].size
+    elif nd != 3:
+        print('Unclear resoulation')
+        
+    # Set-up masks:
+    if vtype == 'Omon':
+        # Setup grid:
+        meshmask = Model.Omeshmask
+
+        # Set-up mask and known weights for computations:
+        ncid   = Dataset(meshmask,'r')
+        dxt    = np.squeeze(ncid.variables['dxt'][:,:])
+        dyt    = np.squeeze(ncid.variables['dyt'][:,:])
+        if nd == 3:
+            tmask  = np.squeeze(ncid.variables['tmask'][:,0,:,:])
+            amask = copy.deepcopy(tmask)
+        elif nd == 4:
+            tmask  = np.squeeze(ncid.variables['tmask'][:,:,:,:])
+            amask  = copy.deepcopy(tmask[0,:,:])
+            dzt    = np.squeeze(ncid.variables['dzt'][:,:,:])
+            lev    = np.squeeze(ncid.variables['lev'][:])
+        lon    = ncid.variables['tlon'][:,:]
+        lat    = ncid.variables['tlat'][:,:]
+        ncid.close()
+    else:
+        print('need to code for atmosphere')
+        
+    # Mask out the region of interest:
+    # Mask data:
+    amask[np.where(lat > jmax)] = 0
+    amask[np.where(lat < jmin)] = 0
+    # Rearrange to satisfy range of input data and fix input data if needed:
+
+    # Make longitude between -180 and 180 (needs to be updated for areas that cross 180):
+    lon[np.where(lon >  180)] = lon[np.where(lon >  180)] - 360
+    lon[np.where(lon < -180)] = lon[np.where(lon < -180)] + 360
+    amask[np.where(lon > imax)] = 0
+    amask[np.where(lon < imin)] = 0
+    amask = amask*dxt*dyt
+        
+    # Combine masks:
+    if gmask != []:
+        amask = amask*gmask
+
+    wmask = copy.deepcopy(tmask)
+    if nd == 3:
+        wmask = wmask*amask
+    elif nd == 4:
+        vol   = copy.deepcopy(dzt)
+        for kk in range(0,nk):
+            wmask[kk,:,:] = wmask[kk,:,:]*amask
+            vol[kk,:,:]   = vol[kk,:,:]*amask
+        
+    
+    areaxy = np.sum(np.sum(wmask,axis=-1),axis=-1)
+    
+    # Initialize output file:
+    modeldir = os.path.dirname(outfile)
+    # Make directory if it doesn't exist:
+    if not os.path.exists(modeldir):
+        os.makedirs(modeldir)
+        
+    
+    if os.path.isfile(outfile):    
+        # Determine how much has already been computed
+        ncid = Dataset(outfile,'r')
+        nn = ncid.variables[dtime].size
+        ncid.close()
+    else:
+        # Create file (need to edit for 3D means)
+        nn = 0 # Number of months computed is zero
+
+        ncid = Dataset(outfile, 'w', format='NETCDF4')
+        # coordinates:
+        ncid.createDimension(dtime,None)
+        ncid.createDimension('bnds',2)
+        if nd == 4:
+            ncid.createDimension(dlev,nk)
+        # variables:
+        ncid.createVariable(dtime,'f8',(dtime,))
+        ncid.createVariable('time_bnds','f8',(dtime,'bnds',))
+        if nd == 4:
+            ncid.createVariable(dlev,'f8',(dlev,))
+            ncid.createVariable('vol','f8',(dlev,))
+            ncid.createVariable(var,'f8',(dtime,dlev,))
+        else:
+            ncid.createVariable(var,'f8',(dtime,))
+
+        # Add Calendar info:
+        ncid.variables[dtime].calendar = cal
+        ncid.variables[dtime].units    = units
+        ncid.variables[dtime].bounds   = 'time_bnds'
+
+        # close:
+        ncid.close()
+        
+    # Loop through each uncomputed month:
+    nm = nn
+    # Loop through each file temperature file:
+    for ff in range(0,nf):
+        print(('computing file ' + str(ff+1) + ' of ' + str(nf)))
+        # Determine how many months of data are in the current temperature file:
+        dims  = CMIPobject.getDims(Tfiles[ff],var)
+        ncid.close
+        nt = dims[0].size
+
+        # Determine which months have been computed:
+        if nm >= nt:
+            # All months from this file have been computed, move on to next file:
+            nm = nm - nt
+        else:
+            # Loop through and compute all the missing months:
+            for mm in range(nm,nt):  # mm is month in the file
+                print(('month file ' + str(mm+1) + ' of ' + str(nt)))
+
+                # Temperature:
+                if nd == 3:
+                    tos = CMIPread.Oread2Ddata(Model,Tfiles[ff],var,time=mm)*wmask
+                elif nd == 4:
+                    tos = CMIPread.Oread3Ddata(Model,Tfiles[ff],var,time=mm)*wmask
+                ncid = Dataset(Tfiles[ff],'r')
+                tt   = ncid.variables[dtime][mm]
+                # Get Calendar information:
+                units2 = ncid.variables[dtime].units
+                bounds = ncid.variables[dtime].bounds
+                tb   = ncid.variables[bounds][mm,:]
+                ncid.close()
+
+                # Fix time:
+                time,bounds = CMIPobject.fixTime(units,units2,cal,tt,tb)
+
+                # Main computation:
+                sst = np.sum(np.sum(tos,axis=-1),axis=-1)/areaxy
+
+                ncido = Dataset(outfile, 'a', format='NETCDF4')
+                ncido.variables[dtime][nn]         = time
+                ncido.variables['time_bnds'][nn,:] = bounds
+                if nd == 3:
+                    ncido.variables[var][nn]           = sst
+                elif nd == 4:
+                    ncido.variables[var][nn,:]           = sst
+                ncido.close()
+
+                # Tidy:
+                nn = nn + 1
+            nm = 0
 
     print('-= DONE =-')

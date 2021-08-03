@@ -16,3 +16,4 @@ from .CMIPread     import Aread2Ddata
 
 from .CMIPmeans    import meanSC
 from .CMIPmeans    import seasonal_means
+from .CMIPmeans    import box_means
