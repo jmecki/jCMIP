@@ -9,12 +9,14 @@ import numpy as np
 from netCDF4 import Dataset
 import cftime
 import copy
+import sys
 
 from . import CMIPobject
 from . import CMIPread
 
 # Mean of seasonal cycle over several years:
 def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
+    print('computing ' + Model.name + ' ' + EXP + ' ' + ENS)
     modeldir = os.path.dirname(outfile)
     
     # Make directory if it doesn't exist:
@@ -37,9 +39,12 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
     if nd == 4:
         dlev = dims[1].name
         nz   = dims[1].size
-    if Model.OextraUV:  # Add more as required:
+    if Model.OextraT:  # Add more as required:
         if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
             ny = ny + 1
+    # Decrease dimension size if data is W-E periodic:
+    nx = nx - np.sum(Model.OextraWE)
+            
                     
     # Get latitude and longitude:
     extra = False
@@ -68,6 +73,7 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
     # Loop through all files:
     for ff in range(0,nf):
         # Get time information from file:
+        print(Files[ff])
         ncid = Dataset(Files[ff],'r')
         time   = ncid.variables[dtime][:]
         bounds = ncid.variables[dtime].bounds
@@ -98,62 +104,68 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
                         print('Need to code 3D atmosphere reading in of data') 
                 else:
                     print((vtype + ' is not coded yet!'))
+                
                 data[mm-1,:,:] = data[mm-1,:,:] + tmp
-                days[mm-1]     = days[mm-1] + time[tt]
-                bnds[mm-1,:]   = bnds[mm-1,:] + time_bnds[tt,:]
+                days[mm-1]     = days[mm-1]     + time[tt]
+                bnds[mm-1,:]   = bnds[mm-1,:]   + time_bnds[tt,:]
 
     data = data/nyr
     days = days/nyr
     bnds = bnds/nyr
     
-    # Save data to file:
-    ncid = Dataset(outfile, 'w', format='NETCDF4')
-    # coordinates:
-    ncid.createDimension(dlon,nx)
-    ncid.createDimension(dlat,ny)
-    if nd == 4:
-        ncid.createDimension(dlev,nz)
-    ncid.createDimension(dtime,None)
-    ncid.createDimension('bnds',2)
-    # variables:
-    if reg:
-        ncid.createVariable(nlon,'f8',(dlon,))
-        ncid.createVariable(nlat,'f8',(dlat,))
-    else:
-        ncid.createVariable(nlon,'f8',(dlat,dlon,))
-        ncid.createVariable(nlat,'f8',(dlat,dlon,))
-    ncid.createVariable(dtime,'f8',(dtime,))
-    ncid.createVariable(bounds,'f8',(dtime,'bnds',))
-    if nd == 4:
-        ncid.createVariable(dlat,'f8',(dlev,))
-        ncid.createVariable(var,'f8',(dtime,dlev,dlat,dlon,))
-    else:
-        ncid.createVariable(var,'f8',(dtime,dlat,dlon,))
-    
-    
-    ncid.variables[dtime].calendar = cal
-    ncid.variables[dtime].units    = units
-    ncid.variables[dtime].bounds   = bounds
+    if np.sum(days) != 0:
+        # Save data to file:
+        ncid = Dataset(outfile, 'w', format='NETCDF4')
+        # coordinates:
+        ncid.createDimension(dlon,nx)
+        ncid.createDimension(dlat,ny)
+        if nd == 4:
+            ncid.createDimension(dlev,nz)
+        ncid.createDimension(dtime,None)
+        ncid.createDimension('bnds',2)
+        # variables:
+        if reg:
+            ncid.createVariable(nlon,'f8',(dlon,))
+            ncid.createVariable(nlat,'f8',(dlat,))
+        else:
+            ncid.createVariable(nlon,'f8',(dlat,dlon,))
+            ncid.createVariable(nlat,'f8',(dlat,dlon,))
+        ncid.createVariable(dtime,'f8',(dtime,))
+        ncid.createVariable(bounds,'f8',(dtime,'bnds',))
+        if nd == 4:
+            ncid.createVariable(dlev,'f8',(dlev,))
+            ncid.createVariable(var,'f8',(dtime,dlev,dlat,dlon,))
+        else:
+            ncid.createVariable(var,'f8',(dtime,dlat,dlon,))
 
-    # fill variables:
-    if reg:
-        ncid.variables[nlon][:] = lon
-        ncid.variables[nlat][:] = lat
-    else:
-        ncid.variables[nlon][:,:] = lon
-        ncid.variables[nlat][:,:] = lat
-    ncid.variables[dtime][0:12]   = days
-    ncid.variables[bounds][:,:]   = bnds
-    if nd == 3:
-        ncid.variables[var][0:12,:,:] = data
-    elif nd == 4:
-        ncid.variables[var][0:12,:,:,:] = data
 
-    # close:
-    ncid.close()
+        ncid.variables[dtime].calendar = cal
+        ncid.variables[dtime].units    = units
+        ncid.variables[dtime].bounds   = bounds
+
+        # fill variables:
+        if reg:
+            ncid.variables[nlon][:] = lon
+            ncid.variables[nlat][:] = lat
+        else:
+            ncid.variables[nlon][:,:] = lon
+            ncid.variables[nlat][:,:] = lat
+        ncid.variables[dtime][0:12]   = days
+        ncid.variables[bounds][:,:]   = bnds
+        if nd == 3:
+            ncid.variables[var][0:12,:,:] = data
+        elif nd == 4:
+            ncid.variables[var][0:12,:,:,:] = data
+
+        # close:
+        ncid.close()
+    else:
+        print('No data for the specified years')
+        sys.exit()
     
 # Compute seasonal mean:
 def seasonal_means(Model,EXP,ENS,var,vtype,mons,outfile,gtype='gn'):
+    print('computing ' + Model.name + ' ' + EXP + ' ' + ENS)
     # Number of months for mean:
     nm = len(mons)
 
@@ -269,6 +281,7 @@ def seasonal_means(Model,EXP,ENS,var,vtype,mons,outfile,gtype='gn'):
     
 # Compute means over a specified lat-lon box (currently only works for data on T-points):
 def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype='gn'):
+    print('computing ' + Model.name + ' ' + EXP + ' ' + ENS)
     # List all files:
     Tfiles = Model.getFiles(EXP=EXP,ENS=ENS,var=var,vtype=vtype)
     nf = len(Tfiles)
@@ -320,7 +333,7 @@ def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype
             tmask  = np.squeeze(ncid.variables['tmask'][:,:,:,:])
             amask  = copy.deepcopy(tmask[0,:,:])
             dzt    = np.squeeze(ncid.variables['dzt'][:,:,:])
-            lev    = np.squeeze(ncid.variables['lev'][:])
+            lev    = np.squeeze(ncid.variables[dlev][:])
         lon    = ncid.variables['tlon'][:,:]
         lat    = ncid.variables['tlat'][:,:]
         ncid.close()
@@ -413,9 +426,8 @@ def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype
         else:
             # Loop through and compute all the missing months:
             for mm in range(nm,nt):  # mm is month in the file
-                print(('month file ' + str(mm+1) + ' of ' + str(nt)))
+                print(('month ' + str(mm+1) + ' of ' + str(nt)))
 
-                # Temperature:
                 if nd == 3:
                     tos = CMIPread.Oread2Ddata(Model,Tfiles[ff],var,time=mm)*wmask
                 elif nd == 4:
@@ -438,9 +450,9 @@ def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype
                 ncido.variables[dtime][nn]         = time
                 ncido.variables['time_bnds'][nn,:] = bounds
                 if nd == 3:
-                    ncido.variables[var][nn]           = sst
+                    ncido.variables[var][nn]       = sst
                 elif nd == 4:
-                    ncido.variables[var][nn,:]           = sst
+                    ncido.variables[var][nn,:]     = sst
                 ncido.close()
 
                 # Tidy:
