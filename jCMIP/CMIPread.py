@@ -95,7 +95,7 @@ def Olatlon(Model,infile,var):
         
     # Extra row in T fields (coded only for regular grid):
     if Model.OextraT:
-        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo') | (var == 'tauvo')):
             if Model.Oreg:
                 lat = np.concatenate((lat,[-90,]),0)
             else:
@@ -149,6 +149,10 @@ def Alatlon(Model,infile,var):
 # Reads in data from a 2D ocean field:
 def Oread2Ddata(Model,infile,var,time=None,lev=None,mask=False):
     ncid = Dataset(infile,'r')
+    # Flip Up-Down:
+    if ((lev != None) & ((Model.name == 'CFSv2-2011') | (Model.name == 'FGOALS-gl') | (Model.name == 'HadGEM2-AO'))):
+        nk  = len(ncid.variables['lev'][:])
+        lev = nk - 1 - lev
     if mask:
         if time == None:
             if lev == None:
@@ -179,7 +183,7 @@ def Oread2Ddata(Model,infile,var,time=None,lev=None,mask=False):
         
     # Extra row in u and v fields:
     if Model.OextraT:
-        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauvo') | (var == 'tauuo')):
             data = np.concatenate((data,np.expand_dims(data[-1,:],0)),0)
                 
     # Remove extra W-E columns:
@@ -209,12 +213,16 @@ def Oread3Ddata(Model,infile,var,time=None,mask=False):
         
     # Extra row in u and v fields:
     if Model.OextraT:
-        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauvo') | (var == 'tauuo')):
             data = np.concatenate((data,np.expand_dims(data[:,-1,:],1)),1)
             
     # Remove extra W-E columns:
     ni   = np.size(data,axis=2)
     data = data[:,:,Model.OextraWE[0]:(ni-Model.OextraWE[1])]
+    
+    # Flip Up-Down:
+    if ((Model.name == 'CFSv2-2011') | (Model.name == 'FGOALS-gl') | (Model.name == 'HadGEM2-AO')):
+        data = data[::-1,:,:]
         
     return data
 

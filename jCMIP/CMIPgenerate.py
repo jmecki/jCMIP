@@ -50,7 +50,8 @@ def updateList(filename,Model,cmip='',datadir='',savedir='',\
                Ogrid='',Omeshmask='',Oreg='',Olon='',Olat='',OflipNS='',OextraT='',OextraWE='',\
                Agrid='',Ameshmask='',Areg='',Alon='',Alat='',AflipNS='',AextraT='',AextraWE='',\
                Igrid='',Imeshmask='',Ireg='',Ilon='',Ilat='',IflipNS='',IextraT='',IextraWE='',\
-               Lgrid='',Lmeshmask='',Lreg='',Llon='',Llat='',LflipNS='',LextraT='',LextraWE=''):
+               Lgrid='',Lmeshmask='',Lreg='',Llon='',Llat='',LflipNS='',LextraT='',LextraWE='',\
+               notes=''):
     
     Clist = readList(filename)
     
@@ -133,6 +134,10 @@ def updateList(filename,Model,cmip='',datadir='',savedir='',\
         Clist[Model].LextraT  = LextraT
     if (LextraWE != ''):
         Clist[Model].LextraWE  = LextraWE
+        
+    # General useful information:
+    if (notes != ''):
+        Clist[Model].notes  = notes
     
     # Save to file:
     saveList(filename,Clist)
@@ -142,7 +147,8 @@ def updateAllList(filename,cmip='',datadir='',savedir='',\
                Ogrid='',Omeshmask='',Oreg='',Olon='',Olat='',OflipNS='',OextraT='',OextraWE='',\
                Agrid='',Ameshmask='',Areg='',Alon='',Alat='',AflipNS='',AextraT='',AextraWE='',\
                Igrid='',Imeshmask='',Ireg='',Ilon='',Ilat='',IflipNS='',IextraT='',IextraWE='',\
-               Lgrid='',Lmeshmask='',Lreg='',Llon='',Llat='',LflipNS='',LextraT='',LextraWE=''):
+               Lgrid='',Lmeshmask='',Lreg='',Llon='',Llat='',LflipNS='',LextraT='',LextraWE='',\
+               notes=''):
     
     Clist = readList(filename)
     Models = list(Clist.keys())
@@ -226,6 +232,10 @@ def updateAllList(filename,cmip='',datadir='',savedir='',\
             Clist[Model].LextraT  = LextraT
         if (LextraWE != ''):
             Clist[Model].LextraWE  = LextraWE
+        
+        # General useful information:
+        if (notes != ''):
+            Clist[Model].notes  = notes
 
     
     # Save to file:

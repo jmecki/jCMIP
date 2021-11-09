@@ -40,7 +40,7 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
         dlev = dims[1].name
         nz   = dims[1].size
     if Model.OextraT:  # Add more as required:
-        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo')):
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo') | (var == 'tauvo')):
             ny = ny + 1
     # Decrease dimension size if data is W-E periodic:
     nx = nx - np.sum(Model.OextraWE)

@@ -13,7 +13,8 @@ class CMIPmodel:
                  Ogrid=None,Omeshmask=None,Oreg=True,Olon='unknown',Olat='unknown',OflipNS=False,OextraT=False,OextraWE=[0,0],\
                  Agrid=None,Ameshmask=None,Areg=True,Alon='unknown',Alat='unknown',AflipNS=False,AextraT=False,AextraWE=[0,0],\
                  Igrid=None,Imeshmask=None,Ireg=True,Ilon='unknown',Ilat='unknown',IflipNS=False,IextraT=False,IextraWE=[0,0],\
-                 Lgrid=None,Lmeshmask=None,Lreg=True,Llon='unknown',Llat='unknown',LflipNS=False,LextraT=False,LextraWE=[0,0]):
+                 Lgrid=None,Lmeshmask=None,Lreg=True,Llon='unknown',Llat='unknown',LflipNS=False,LextraT=False,LextraWE=[0,0],\
+                 notes=''):
         self.name = name
         self.cmip = cmip if cmip is not None else 'unknown'
         if datadir is None:
@@ -64,6 +65,9 @@ class CMIPmodel:
         self.LflipNS   = LflipNS
         self.LextraT   = LextraT
         self.LextraWE  = LextraWE
+        
+        # General notes about model details/issues:
+        self.notes     = notes
         
         
     # Return institute of model (some models have multiple institutes):
