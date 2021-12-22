@@ -338,6 +338,173 @@ def moveData(Model,grid1,grid2,data,computation='mean'):
             datanew = np.squeeze(np.min(tmp,axis=0)*umask)
         elif computation == 'max':
             datanew = np.squeeze(np.max(tmp,axis=0)*umask)
+            
+    elif ((grid1 == 'T') & (grid2 == 'VT')):
+        # Data won't be masked:
+        ncid  = Dataset(Model.Omeshmask,'r')
+        dyt   = ncid.variables['dyt'][:,:]
+        ncid.close()
+        if ((Model.Ogrid[0] == 'A') | (Model.Ogrid[1] == 'b')):
+            if np.size(np.shape(data)) == 2:
+                tmp = np.tile(data,(2,1,1))
+                dyt = np.tile(dyt,(2,1,1))
+                tmp[1,1:,:] = tmp[0,:-1,:]
+                dyt[1,1:,:] = dyt[0,:-1,:]
+            elif np.size(np.shape(data)) == 3:
+                tmp = np.tile(data,(2,1,1,1))
+                dyt = np.tile(dyt,(2,np.size(tmp,1),1,1))
+                tmp[1,:,1:,:] = tmp[0,:,:-1,:]
+                dyt[1,:,1:,:] = dyt[0,:,:-1,:] 
+        else:
+            if np.size(np.shape(data)) == 2:
+                tmp = np.tile(data,(2,1,1))
+                dyt = np.tile(dyt,(2,1,1))
+                tmp[1,:-1,:] = tmp[0,1:,:]
+                dyt[1,:-1,:] = dyt[0,1:,:]
+            elif np.size(np.shape(data)) == 3:
+                tmp = np.tile(data,(2,1,1,1))
+                dyt = np.tile(dyt,(2,np.size(tmp,1),1,1))
+                tmp[1,:,:-1,:] = tmp[0,:,1:,:]
+                dyt[1,:,:-1,:] = dyt[0,:,1:,:] 
+                
+            
+        if computation == 'mean':
+            datanew = np.squeeze(np.sum(tmp*dyt,axis=0)/np.sum(dyt,axis=0))
+        elif computation == 'min':
+            datanew = np.squeeze(np.min(tmp,axis=0))
+        elif computation == 'max':
+            datanew = np.squeeze(np.max(tmp,axis=0))
+        
+    elif ((grid1 == 'V') & (grid2 == 'VT')):
+        # Data won't be masked:
+        if Model.Ogrid[0] == 'A':
+            ncid  = Dataset(Model.Omeshmask,'r')
+            dyv   = ncid.variables['dyv'][:,:]
+            ncid.close()
+            if np.size(np.shape(data)) == 2:
+                tmp = np.tile(data,(2,1,1))
+                dyv = np.tile(dyv,(2,1,1))
+                tmp[1,1:,:] = tmp[0,:-1,:]
+                dyv[1,1:,:] = dyv[0,:-1,:]
+            elif np.size(np.shape(data)) == 3:
+                tmp = np.tile(data,(2,1,1,1))
+                dyv = np.tile(dyv,(2,np.size(tmp,1),1,1))
+                tmp[1,:,1:,:] = tmp[0,:,:-1,:]
+                dyv[1,:,1:,:] = dyv[0,:,:-1,:] 
+            
+            if computation == 'mean':
+                datanew = np.squeeze(np.sum(tmp*dyv,axis=0)/np.sum(dyv,axis=0))
+            elif computation == 'min':
+                datanew = np.squeeze(np.min(tmp,axis=0))
+            elif computation == 'max':
+                datanew = np.squeeze(np.max(tmp,axis=0))
+                
+        elif Model.Ogrid[0] == 'B':
+            if Model.Ogrid[2] == 'r':
+                if np.size(np.shape(data)) == 2:
+                    tmp = np.tile(data,(2,1,1))
+                    tmp[1,:,:] = np.roll(tmp[0,:,:],1,axis=1)
+                elif np.size(np.shape(data)) == 3:
+                    tmp = np.tile(data,(2,1,1,1))
+                    tmp[1,:,:,:] = np.roll(tmp[0,:,:,:],1,axis=2)
+            if Model.Ogrid[2] == 'l':
+                if np.size(np.shape(data)) == 2:
+                    tmp = np.tile(data,(2,1,1))
+                    tmp[1,:,:] = np.roll(tmp[0,:,:],-1,axis=1)
+                elif np.size(np.shape(data)) == 3:
+                    tmp = np.tile(data,(2,1,1,1))
+                    tmp[1,:,:,:] = np.roll(tmp[0,:,:,:],-1,axis=2)
+            
+            if computation == 'mean':
+                datanew = np.squeeze(np.mean(tmp,axis=0))
+            elif computation == 'min':
+                datanew = np.squeeze(np.min(tmp,axis=0))
+            elif computation == 'max':
+                datanew = np.squeeze(np.max(tmp,axis=0))
+        elif Model.Ogrid[0] == 'C':
+            datanew = tmp
+            
+    elif ((grid1 == 'T') & (grid2 == 'V')):
+        # Data won't be masked:
+        if (Model.Ogrid[0] == 'A'):
+            datanew = data
+        elif (Model.Ogrid[0] == 'B'):
+            if np.size(np.shape(data)) == 2:
+                tmp = np.tile(data,(4,1,1))
+            elif np.size(np.shape(data)) == 3:
+                tmp = np.tile(data,(4,1,1,1))
+                
+            if (Model.Ogrid[1] == 't'):
+                if np.size(np.shape(data)) == 2:
+                    tmp[2,:-1,:] = tmp[0,1:,:]
+                    tmp[3,:-1,:] = tmp[0,1:,:]
+                elif np.size(np.shape(data)) == 3:
+                    tmp[2,:,:-1,:] = tmp[0,:,1:,:]
+                    tmp[3,:,:-1,:] = tmp[0,:,1:,:]
+            elif (Model.Ogrid[1] == 'b'):
+                if np.size(np.shape(data)) == 2:
+                    tmp[2,1:,:] = tmp[0,:-1,:]
+                    tmp[3,1:,:] = tmp[0,:-1,:]
+                elif np.size(np.shape(data)) == 3:
+                    tmp[2,:,1:,:] = tmp[0,:,:-1,:]
+                    tmp[3,:,1:,:] = tmp[0,:,:-1,:]
+            
+            if (Model.Ogrid[2] == 'r'):
+                if np.size(np.shape(data)) == 2:
+                    tmp[1,:,:] = np.roll(tmp[0,:,:],-1,axis=1)
+                    tmp[2,:,:] = np.roll(tmp[3,:,:],-1,axis=1)
+                elif np.size(np.shape(data)) == 3:
+                    tmp[1,:,:,:] = np.roll(tmp[0,:,:,:],-1,axis=2)
+                    tmp[2,:,:,:] = np.roll(tmp[3,:,:,:],-1,axis=2)
+            elif (Model.Ogrid[2] == 'l'):
+                if np.size(np.shape(data)) == 2:
+                    tmp[1,:,:] = np.roll(tmp[0,:,:],1,axis=1)
+                    tmp[2,:,:] = np.roll(tmp[3,:,:],1,axis=1)
+                elif np.size(np.shape(data)) == 3:
+                    tmp[1,:,:,:] = np.roll(tmp[0,:,:,:],1,axis=2)
+                    tmp[2,:,:,:] = np.roll(tmp[3,:,:,:],1,axis=2)
+            
+            if computation == 'mean':
+                datanew = np.squeeze(np.mean(tmp,axis=0))
+            elif computation == 'min':
+                datanew = np.squeeze(np.min(tmp,axis=0))
+            elif computation == 'max':
+                datanew = np.squeeze(np.max(tmp,axis=0))
+        else:
+            ncid  = Dataset(Model.Omeshmask,'r')
+            dyt   = ncid.variables['dyt'][:,:]
+            ncid.close()
+            if ((Model.Ogrid[1] == 'b')):
+                if np.size(np.shape(data)) == 2:
+                    tmp = np.tile(data,(2,1,1))
+                    dyt = np.tile(dyt,(2,1,1))
+                    tmp[1,1:,:] = tmp[0,:-1,:]
+                    dyt[1,1:,:] = dyt[0,:-1,:]
+                elif np.size(np.shape(data)) == 3:
+                    tmp = np.tile(data,(2,1,1,1))
+                    dyt = np.tile(dyt,(2,np.size(tmp,1),1,1))
+                    tmp[1,:,1:,:] = tmp[0,:,:-1,:]
+                    dyt[1,:,1:,:] = dyt[0,:,:-1,:] 
+            else:
+                if np.size(np.shape(data)) == 2:
+                    tmp = np.tile(data,(2,1,1))
+                    dyt = np.tile(dyt,(2,1,1))
+                    tmp[1,:-1,:] = tmp[0,1:,:]
+                    dyt[1,:-1,:] = dyt[0,1:,:]
+                elif np.size(np.shape(data)) == 3:
+                    tmp = np.tile(data,(2,1,1,1))
+                    dyt = np.tile(dyt,(2,np.size(tmp,1),1,1))
+                    tmp[1,:,:-1,:] = tmp[0,:,1:,:]
+                    dyt[1,:,:-1,:] = dyt[0,:,1:,:] 
+                
+            
+            if computation == 'mean':
+                datanew = np.squeeze(np.sum(tmp*dyt,axis=0)/np.sum(dyt,axis=0))
+            elif computation == 'min':
+                datanew = np.squeeze(np.min(tmp,axis=0))
+            elif computation == 'max':
+                datanew = np.squeeze(np.max(tmp,axis=0))
+            
     else:
         print('Need to code')
     

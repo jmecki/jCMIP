@@ -26,6 +26,8 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
     # Find all files needed for the computations:
     Files = Model.getFiles(var,EXP=EXP,ENS=ENS,vtype=vtype,gtype=gtype)
     nf = len(Files)
+    print(nf)
+    print(gtype)
     
     # Get model information:
     dims  = CMIPobject.getDims(Files[0],var)
