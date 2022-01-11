@@ -1,7 +1,6 @@
 from .CMIPobject     import CMIPmodel
 from .CMIPobject     import getModels 
 from .CMIPobject     import getDims
-from .CMIPobject     import fixTime 
 
 from .CMIPgenerate   import readList
 from .CMIPgenerate   import generateList

@@ -225,24 +225,3 @@ def getDims(infile,var):
     ncid.close
     
     return dims
-
-# Checks and fixes time if calendars don't match:
-def fixTime(units,units2,cal,time,time_bnds):
-    if units2 != units:
-        yr_init = int(units.split(' ')[2][0:4])
-        yr_new  = int(units2.split(' ')[2][0:4])
-        nleap   = 0 
-        if ((cal == 'standard') | (cal == 'gregorian')):
-            days = 365
-            for yy in range(yr_init,yr_new):
-                if calendar.isleap(yy):
-                    nleap = nleap + 1
-        elif cal == 'noleap':
-            days = 365
-        else:
-            days = int(cal[0:3])
-        offset = days*(yr_new-yr_init) + nleap
-        time      = time      + offset
-        time_bnds = time_bnds + offset
-        
-    return time, time_bnds

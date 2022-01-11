@@ -4,6 +4,7 @@ from netCDF4 import Dataset
 import numpy as np
 import copy
 import calendar
+import cftime
 
 # Determine dimensions using a given file and variable:
 def getDims(infile,var):
@@ -34,21 +35,33 @@ def fixTime(units,units2,cal,time,time_bnds):
         
     return time, time_bnds
 
-# Determine starting file and position (need to update to check dates):
-def timeFile(nn,Files):
-    ff = 0
+# Determine starting file and position:
+def timeFile(Model,cal,units2,tt,Files):
+    ff    = 0
+    nn    = np.nan
+    found = False
+    dd = cftime.num2date(tt,units2,cal)
+    
     nf = len(Files)
-    dims = getDims(Files[ff],'time')
-    nm = dims[0].size
-    while nn >= nm:
-        nn = nn - nm
-        ff = ff + 1
-        if ff == nf:
-            print('all files are computed')
+    while(((ff < nf) & (found == False))):
+        ncid = Dataset(Files[ff],'r')
+        ttf = ncid.variables['time'][:]
+        units = ncid.variables['time'].units
+        ncid.close()
+        if ((Model.name == 'FGOALS-g2')):
+            units = (units + '-01')
+        
+        dd2 = cftime.date2num(dd,units2,cal)
+        
+        if(((dd2 >= ttf[0]) & (dd2 <= ttf[-1]))):
             nn = 0
+            while(((nn < len(ttf)) & (found == False))):
+                if (ttf[nn] == dd2):
+                    found = True
+                else:
+                    nn = nn + 1
         else:
-            dims = getDims(Files[ff],'time')
-            nm = dims[0].size
+            ff = ff + 1
             
     return ff, nn
 
