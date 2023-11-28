@@ -127,16 +127,16 @@ class CMIPmodel:
         return EXPs    
     
     # Return files of model for a specfied variable:
-    def getFiles(self,var,EXP='*',ENS='*',vtype='*',gtype='gn'): #gtype only CMIP6
+    def getFiles(self,var,EXP='*',ENS='*',vtype='*',gtype='gn',version='latest'): #gtype only CMIP6
         FILEs = []        
         if self.cmip == '5':
-            tmp = glob.glob((self.datadir + '*/' + self.name + '/' + EXP + '/*/*/' + vtype + '/' + ENS + '/latest/' + var + '/*'))
+            tmp = glob.glob((self.datadir + '*/' + self.name + '/' + EXP + '/*/*/' + vtype + '/' + ENS + '/' + version + '/' + var + '/*'))
             for tt in tmp:
                 FILEs.append(tt)
             FILEs = list(set(FILEs))            
             FILEs.sort()
         elif self.cmip == '6':
-            tmp = glob.glob((self.datadir + '*/*/' + self.name + '/' + EXP + '/' + ENS + '/' + vtype + '/' + var + '/' + gtype + '/latest/*'))
+            tmp = glob.glob((self.datadir + '*/*/' + self.name + '/' + EXP + '/' + ENS + '/' + vtype + '/' + var + '/' + gtype + '/' + version + '/*'))
             for tt in tmp:
                 FILEs.append(tt)
             FILEs = list(set(FILEs))
@@ -211,6 +211,42 @@ def getModels(cmip,EXP='*',ENS='*',var='*',vtype='*',gtype='gn'): #gtype only CM
             tmp = glob.glob((datadir6 + '*/*/*/' + EXP + '/' + ENS + '/' + vtype + '/' + var + '/' + gtype + '/latest/*'))
             for tt in tmp:
                 Models.append(tt.split('/')[-8])
+            Models = list(set(Models))
+            Models.sort()
+        else:
+            print('Not a valid CMIP')
+
+    return Models 
+
+# Return list of models with ensemble member:
+def getModelENS(cmip,EXP='*',var='*',vtype='*',gtype='gn'): #gtype only CMIP6
+    Models = []
+    if var == '*':
+        if cmip == '5':
+            tmp = glob.glob((datadir5 + '*/*/' + EXP + '/*/*/' + vtype + '/*'))
+            for tt in tmp:
+                Models.append(cmip + '_' + tt.split('/')[-6] + '_' + tt.split('/')[-1])
+            Models = list(set(Models))            
+            Models.sort()
+        elif cmip == '6':
+            tmp = glob.glob((datadir6 + '*/*/*/' + EXP + '/*'))
+            for tt in tmp:
+                Models.append(cmip + '_' + tt.split('/')[-3] + '_' + tt.split('/')[-1])
+            Models = list(set(Models))
+            Models.sort()
+        else:
+            print('Not a valid CMIP')
+    else:
+        if cmip == '5':
+            tmp = glob.glob((datadir5 + '*/*/' + EXP + '/*/*/' + vtype + '/*/latest/' + var + '/*'))
+            for tt in tmp:
+                Models.append(cmip + '_' + tt.split('/')[-9] + '_' + tt.split('/')[-4])
+            Models = list(set(Models))            
+            Models.sort()
+        elif cmip == '6':
+            tmp = glob.glob((datadir6 + '*/*/*/' + EXP + '/*/' + vtype + '/' + var + '/' + gtype + '/latest/*'))
+            for tt in tmp:
+                Models.append(cmip + '_' + tt.split('/')[-8] + '_' + tt.split('/')[-6])
             Models = list(set(Models))
             Models.sort()
         else:

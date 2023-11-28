@@ -17,8 +17,10 @@ def getDims(infile,var):
 # Checks and fixes time if calendars don't match:
 def fixTime(units,units2,cal,time,time_bnds):
     if units2 != units:
-        yr_init = int(units.split(' ')[2][0:4])
-        yr_new  = int(units2.split(' ')[2][0:4])
+        yr_init = int(units.split(' ')[2].split('-')[0])
+        #yr_init = int(units.split(' ')[2][0:4])
+        yr_new  = int(units2.split(' ')[2].split('-')[0])
+        #yr_new  = int(units2.split(' ')[2][0:4])
         nleap   = 0 
         if ((cal == 'standard') | (cal == 'gregorian')):
             days = 365
@@ -51,12 +53,13 @@ def timeFile(Model,cal,units2,tt,Files):
         if ((Model.name == 'FGOALS-g2')):
             units = (units + '-01')
         
-        dd2 = cftime.date2num(dd,units2,cal)
+        dd2 = cftime.date2num(dd,units,cal)
         
         if(((dd2 >= ttf[0]) & (dd2 <= ttf[-1]))):
             nn = 0
             while(((nn < len(ttf)) & (found == False))):
-                if (ttf[nn] == dd2):
+                if ((cftime.num2date(ttf[nn],units,cal).year  == cftime.num2date(tt,units2,cal).year) &
+                    (cftime.num2date(ttf[nn],units,cal).month == cftime.num2date(tt,units2,cal).month)):
                     found = True
                 else:
                     nn = nn + 1
@@ -108,7 +111,7 @@ def Olatlon(Model,infile,var):
         
     # Extra row in T fields (coded only for regular grid):
     if Model.OextraT:
-        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo') | (var == 'tauvo')):
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo') | (var == 'tauvo') | (var == 'hfy')):
             if Model.Oreg:
                 lat = np.concatenate((lat,[-90,]),0)
             else:
@@ -196,7 +199,7 @@ def Oread2Ddata(Model,infile,var,time=None,lev=None,mask=False):
         
     # Extra row in u and v fields:
     if Model.OextraT:
-        if ((var == 'vo') | (var == 'uo') | (var == 'tauvo') | (var == 'tauuo')):
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauvo') | (var == 'tauuo') | (var == 'hfy')):
             data = np.concatenate((data,np.expand_dims(data[-1,:],0)),0)
                 
     # Remove extra W-E columns:
@@ -226,7 +229,7 @@ def Oread3Ddata(Model,infile,var,time=None,mask=False):
         
     # Extra row in u and v fields:
     if Model.OextraT:
-        if ((var == 'vo') | (var == 'uo') | (var == 'tauvo') | (var == 'tauuo')):
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauvo') | (var == 'tauuo') | (var == 'hfy')):
             data = np.concatenate((data,np.expand_dims(data[:,-1,:],1)),1)
             
     # Remove extra W-E columns:
@@ -277,7 +280,7 @@ def Aread2Ddata(Model,infile,var,time=None,lev=None,mask=False):
     return data
 
 # Move data onto different grid points:
-def moveData(Model,grid1,grid2,data,computation='mean'):
+def moveData(Model,grid1,grid2,data,computation='mean',dyt=[]):
     if ((grid1 == 'T') & (grid2 == 'U')):
         if Model.Ogrid[0] == 'B':
             if np.size(np.shape(data)) == 2:
@@ -484,9 +487,10 @@ def moveData(Model,grid1,grid2,data,computation='mean'):
             elif computation == 'max':
                 datanew = np.squeeze(np.max(tmp,axis=0))
         else:
-            ncid  = Dataset(Model.Omeshmask,'r')
-            dyt   = ncid.variables['dyt'][:,:]
-            ncid.close()
+            if (np.size(dyt) == 0):
+                ncid  = Dataset(Model.Omeshmask,'r')
+                dyt   = ncid.variables['dyt'][:,:]
+                ncid.close()
             if ((Model.Ogrid[1] == 'b')):
                 if np.size(np.shape(data)) == 2:
                     tmp = np.tile(data,(2,1,1))

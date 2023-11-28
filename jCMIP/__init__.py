@@ -1,5 +1,6 @@
 from .CMIPobject     import CMIPmodel
 from .CMIPobject     import getModels 
+from .CMIPobject     import getModelENS 
 from .CMIPobject     import getDims
 
 from .CMIPgenerate   import readList
@@ -18,6 +19,7 @@ from .CMIPread       import Aread2Ddata
 from .CMIPread       import moveData
 
 from .CMIPmeans      import meanSC
+from .CMIPmeans      import meanSCfirst
 from .CMIPmeans      import seasonal_means
 from .CMIPmeans      import box_means
 

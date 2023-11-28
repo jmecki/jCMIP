@@ -25,9 +25,14 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
     
     # Find all files needed for the computations:
     Files = Model.getFiles(var,EXP=EXP,ENS=ENS,vtype=vtype,gtype=gtype)
+    # Duplicate files:
+    if ((var == 'tas') & (Model.name == 'CCSM4') &  (((EXP == 'rcp26') & (ENS != 'r6i1p1')) | ((EXP == 'rcp85') & (ENS != 'r1i1p1') & (ENS != 'r6i1p1')))):
+        Files = Files[:1]
+    elif ((var == 'tas') & (Model.name == 'EC-EARTH') & (ENS == 'r12i1p1')):
+        Files = Files[::2]
+    
     nf = len(Files)
-    print(nf)
-    print(gtype)
+    print(Files)
     
     # Get model information:
     dims  = CMIPobject.getDims(Files[0],var)
@@ -45,7 +50,10 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
         if ((var == 'vo') | (var == 'uo') | (var == 'tauuo') | (var == 'tauvo')):
             ny = ny + 1
     # Decrease dimension size if data is W-E periodic:
-    nx = nx - np.sum(Model.OextraWE)
+    if vtype == 'Omon':
+        nx = nx - np.sum(Model.OextraWE)
+    elif vtype == 'Amon':
+        nx = nx - np.sum(Model.AextraWE)
             
                     
     # Get latitude and longitude:
@@ -62,7 +70,7 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
         lon,lat = CMIPread.Alatlon(Model,Files[0],var)
     else:
         print((vtype + ' is an invalid/uncoded type'))
-        
+    
     # Loop through all files and add together the relavent years:
     if nd == 3:
         data = np.zeros((12,ny,nx),'float')
@@ -110,6 +118,167 @@ def meanSC(Model,EXP,ENS,var,vtype,styr,fnyr,outfile,gtype='gn'):
                 data[mm-1,:,:] = data[mm-1,:,:] + tmp
                 days[mm-1]     = days[mm-1]     + time[tt]
                 bnds[mm-1,:]   = bnds[mm-1,:]   + time_bnds[tt,:]
+
+    data = data/nyr
+    days = days/nyr
+    bnds = bnds/nyr
+    
+    if np.sum(days) != 0:
+        # Save data to file:
+        ncid = Dataset(outfile, 'w', format='NETCDF4')
+        # coordinates:
+        ncid.createDimension(dlon,nx)
+        ncid.createDimension(dlat,ny)
+        if nd == 4:
+            ncid.createDimension(dlev,nz)
+        ncid.createDimension(dtime,None)
+        ncid.createDimension('bnds',2)
+        # variables:
+        if ((reg) & ((Model.name != 'BNU-ESM') & (EXP != 'rcp26'))):
+            ncid.createVariable(nlon,'f8',(dlon,))
+            ncid.createVariable(nlat,'f8',(dlat,))
+        else:
+            ncid.createVariable(nlon,'f8',(dlat,dlon,))
+            ncid.createVariable(nlat,'f8',(dlat,dlon,))
+        ncid.createVariable(dtime,'f8',(dtime,))
+        ncid.createVariable(bounds,'f8',(dtime,'bnds',))
+        if nd == 4:
+            ncid.createVariable(dlev,'f8',(dlev,))
+            ncid.createVariable(var,'f8',(dtime,dlev,dlat,dlon,))
+        else:
+            ncid.createVariable(var,'f8',(dtime,dlat,dlon,))
+
+
+        ncid.variables[dtime].calendar = cal
+        ncid.variables[dtime].units    = units
+        ncid.variables[dtime].bounds   = bounds
+
+        # fill variables:
+        if ((reg) & ((Model.name != 'BNU-ESM') & (EXP != 'rcp26'))):
+            ncid.variables[nlon][:] = lon
+            ncid.variables[nlat][:] = lat
+        else:
+            ncid.variables[nlon][:,:] = lon
+            ncid.variables[nlat][:,:] = lat
+        ncid.variables[dtime][0:12]   = days
+        ncid.variables[bounds][:,:]   = bnds
+        if nd == 3:
+            ncid.variables[var][0:12,:,:] = data
+        elif nd == 4:
+            ncid.variables[var][0:12,:,:,:] = data
+
+        # close:
+        ncid.close()
+    else:
+        print('No data for the specified years')
+        sys.exit()
+        
+# Mean of seasonal cycle over first n years:
+def meanSCfirst(Model,EXP,ENS,var,vtype,nyr,outfile,gtype='gn'):
+    print('computing ' + Model.name + ' ' + EXP + ' ' + ENS)
+    modeldir = os.path.dirname(outfile)
+    
+    # Make directory if it doesn't exist:
+    if not os.path.exists(modeldir):
+        os.makedirs(modeldir)
+    
+    # Find all files needed for the computations:
+    Files = Model.getFiles(var,EXP=EXP,ENS=ENS,vtype=vtype,gtype=gtype)
+    nf = len(Files)
+    print(Files)
+    
+    # Get model information:
+    dims  = CMIPobject.getDims(Files[0],var)
+    nd    = len(dims)   
+    dtime = dims[0].name
+    dlon  = dims[nd-1].name
+    nx    = dims[nd-1].size
+    dlat  = dims[nd-2].name
+    ny    = dims[nd-2].size
+    if nd == 4:
+        dlev = dims[1].name
+        nz   = dims[1].size
+    if Model.OextraT:  # Add more as required:
+        if ((var == 'vo') | (var == 'uo') | (var == 'tauuo') | (var == 'tauvo')):
+            ny = ny + 1
+    # Decrease dimension size if data is W-E periodic:
+    if vtype == 'Omon':
+        nx = nx - np.sum(Model.OextraWE)
+    elif vtype == 'Amon':
+        nx = nx - np.sum(Model.AextraWE)
+            
+                    
+    # Get latitude and longitude:
+    extra = False
+    if vtype == 'Omon':
+        nlon = Model.Olon
+        nlat = Model.Olat
+        reg  = Model.Oreg
+        lon,lat = CMIPread.Olatlon(Model,Files[0],var)
+    elif vtype == 'Amon':
+        nlon = Model.Alon
+        nlat = Model.Alat
+        reg  = Model.Areg
+        lon,lat = CMIPread.Alatlon(Model,Files[0],var)
+    else:
+        print((vtype + ' is an invalid/uncoded type'))
+    
+    # Loop through all files and add together the relavent years:
+    if nd == 3:
+        data = np.zeros((12,ny,nx),'float')
+    elif nd == 4:
+        data = np.zeros((12,nz,ny,nx),'float')  
+    days = np.zeros((12),'float')
+    bnds = np.zeros((12,2),'float')
+    nn = 0
+
+    # Loop through all files:
+    nnyr = 0
+    for ff in range(0,nf):
+        # Get time information from file:
+        print(Files[ff])
+        ncid = Dataset(Files[ff],'r')
+        time   = ncid.variables[dtime][:]
+        bounds = ncid.variables[dtime].bounds
+        time_bnds = ncid.variables[bounds][:,:]
+        cal   = ncid.variables[dtime].calendar
+        units = ncid.variables[dtime].units
+        ncid.close()
+        if Model.name == 'FGOALS-g2':
+            units = (units + '-01')  
+            
+        nt = np.size(time)
+        
+        # Find first January:
+        stm = 0
+        if ff == 0:
+            while (cftime.num2date(time[stm],units,cal).month != 1):
+                stm = stm + 1
+            
+        for tt in range(stm,nt):
+            yr = cftime.num2date(time[tt],units,cal).year
+            mm = cftime.num2date(time[tt],units,cal).month
+            
+            if (nnyr < 12*nyr):
+                nn = nn + 1
+                if vtype == 'Omon':
+                    if nd == 3:
+                        tmp = CMIPread.Oread2Ddata(Model,Files[ff],var,time=tt)
+                    elif nd == 4:
+                        tmp = CMIPread.Oread3Ddata(Model,Files[ff],var,time=tt) 
+                elif vtype == 'Amon':
+                    if nd == 3:
+                        tmp = CMIPread.Aread2Ddata(Model,Files[ff],var,time=tt)
+                    elif nd == 4:
+                        print('Need to code 3D atmosphere reading in of data') 
+                else:
+                    print((vtype + ' is not coded yet!'))
+                
+                data[mm-1,:,:] = data[mm-1,:,:] + tmp
+                days[mm-1]     = days[mm-1]     + time[tt]
+                bnds[mm-1,:]   = bnds[mm-1,:]   + time_bnds[tt,:]
+                
+                nnyr = nnyr + 1
 
     data = data/nyr
     days = days/nyr
@@ -367,8 +536,9 @@ def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype
         for kk in range(0,nk):
             wmask[kk,:,:] = wmask[kk,:,:]*amask
             vol[kk,:,:]   = vol[kk,:,:]*amask
+            
         
-    
+        volxy  = np.sum(np.sum(vol,axis=-1),axis=-1)
     areaxy = np.sum(np.sum(wmask,axis=-1),axis=-1)
     
     # Initialize output file:
@@ -377,7 +547,7 @@ def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype
     if not os.path.exists(modeldir):
         os.makedirs(modeldir)
         
-    
+    print(outfile)
     if os.path.isfile(outfile):    
         # Determine how much has already been computed
         ncid = Dataset(outfile,'r')
@@ -397,9 +567,15 @@ def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype
         ncid.createVariable(dtime,'f8',(dtime,))
         ncid.createVariable('time_bnds','f8',(dtime,'bnds',))
         if nd == 4:
-            ncid.createVariable(dlev,'f8',(dlev,))
+            ncid.createVariable('lev','f8',(dlev,))
             ncid.createVariable('vol','f8',(dlev,))
+            ncid.createVariable('area','f8',(dlev,))
             ncid.createVariable(var,'f8',(dtime,dlev,))
+            ncid.variables['lev'][:] = lev
+            print(volxy)
+            print(areaxy)
+            ncid.variables['vol'][:]  = volxy
+            ncid.variables['area'][:] = areaxy
         else:
             ncid.createVariable(var,'f8',(dtime,))
 
@@ -418,7 +594,6 @@ def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype
         print(('computing file ' + str(ff+1) + ' of ' + str(nf)))
         # Determine how many months of data are in the current temperature file:
         dims  = CMIPobject.getDims(Tfiles[ff],var)
-        ncid.close
         nt = dims[0].size
 
         # Determine which months have been computed:
@@ -431,9 +606,9 @@ def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype
                 print(('month ' + str(mm+1) + ' of ' + str(nt)))
 
                 if nd == 3:
-                    tos = CMIPread.Oread2Ddata(Model,Tfiles[ff],var,time=mm)*wmask
+                    tos = CMIPread.Oread2Ddata(Model,Tfiles[ff],var,time=mm)
                 elif nd == 4:
-                    tos = CMIPread.Oread3Ddata(Model,Tfiles[ff],var,time=mm)*wmask
+                    tos = CMIPread.Oread3Ddata(Model,Tfiles[ff],var,time=mm)
                 ncid = Dataset(Tfiles[ff],'r')
                 tt   = ncid.variables[dtime][mm]
                 # Get Calendar information:
@@ -443,10 +618,13 @@ def box_means(Model,EXP,ENS,var,vtype,imin,imax,jmin,jmax,outfile,gmask='',gtype
                 ncid.close()
 
                 # Fix time:
-                time,bounds = CMIPobject.fixTime(units,units2,cal,tt,tb)
+                time,bounds = CMIPread.fixTime(units,units2,cal,tt,tb)
 
                 # Main computation:
-                sst = np.sum(np.sum(tos,axis=-1),axis=-1)/areaxy
+                if nd == 3:
+                    sst = np.sum(np.sum(tos*wmask,axis=-1),axis=-1)/areaxy
+                elif nd == 4:
+                    sst = np.sum(np.sum(tos*vol,axis=-1),axis=-1)/volxy
 
                 ncido = Dataset(outfile, 'a', format='NETCDF4')
                 ncido.variables[dtime][nn]         = time
